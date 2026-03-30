@@ -1,0 +1,36 @@
+# Virtual Environment
+venv/
+env/
+*.pyc
+__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+*.egg-info/
+dist/
+build/
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+*.xlsx
+*.xls
+temp/
+tmp/
+*.log
+
+# Environment
+.env
+.env.local
