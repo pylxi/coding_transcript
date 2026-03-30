@@ -1,3 +1,14 @@
+---
+title: Dialogue Episode Annotator
+emoji: 🎙️
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 4.0.0
+app_file: app.py
+pinned: false
+---
+
 # Dialogue Episode Annotator
 
 A Gradio web app for segmenting dialogue transcripts into episodes and annotating them with metacognitive categories.
