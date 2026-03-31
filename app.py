@@ -59,6 +59,7 @@ import gradio as gr
 from src.csv_loader import load_csv_file
 from src.discourse_segmenter import segment_dialogue
 
+# Version: 2.1.0 (Stable release with discourse stack model)
 
 # ════════════════════════════════════════════════════════════════════════════
 # STATE MANAGEMENT
