@@ -14,11 +14,16 @@ def load_csv_file(file_path):
     """
     Load CSV file with robust error handling
     
+    Accepts two formats:
+    1. Old format: timestamp, speaker, utterance
+    2. New format: speaker, start, end, text
+    
     Args:
         file_path: Path to CSV file
         
     Returns:
-        DataFrame with columns [timestamp, speaker, utterance, timestamp_seconds]
+        DataFrame with columns [speaker, start, end, text]
+        (times in seconds, floats)
         
     Raises:
         ValueError: If file cannot be loaded or is invalid
@@ -44,33 +49,56 @@ def load_csv_file(file_path):
         raise ValueError("File is empty or all rows were invalid")
     
     # Check columns (case-insensitive)
-    cols_lower = [c.lower().strip() for c in df.columns]
-    required = {'timestamp', 'speaker', 'utterance'}
+    cols_lower = {c.lower().strip(): c for c in df.columns}
     
-    if not all(req in cols_lower for req in required):
+    # Try new format first: speaker, start, end, text
+    new_format_required = {'speaker', 'start', 'end', 'text'}
+    old_format_required = {'timestamp', 'speaker', 'utterance'}
+    
+    has_new_format = all(req in cols_lower for req in new_format_required)
+    has_old_format = all(req in cols_lower for req in old_format_required)
+    
+    if not (has_new_format or has_old_format):
         available = ', '.join(df.columns)
         raise ValueError(
             f"Missing required columns\n\n"
             f"You have: {available}\n\n"
-            f"Required: timestamp, speaker, utterance"
+            f"Required (new): speaker, start, end, text\n"
+            f"Or (old): timestamp, speaker, utterance"
         )
     
-    # Rename columns to lowercase for consistency
-    col_mapping = {}
-    for col in df.columns:
-        lower = col.lower().strip()
-        if lower in required:
-            col_mapping[col] = lower
-    df = df.rename(columns=col_mapping)
+    # Map old columns to new format if needed
+    if has_old_format and not has_new_format:
+        # Convert old format to new format
+        df = df.rename(columns={
+            cols_lower['timestamp']: 'timestamp',
+            cols_lower['speaker']: 'speaker',
+            cols_lower['utterance']: 'text'
+        })
+        
+        # Parse timestamp to seconds
+        df['start'] = df['timestamp'].apply(parse_timestamp)
+        df['end'] = df['start'] + 1  # Approximate: 1 second per utterance
+        df = df[['speaker', 'start', 'end', 'text']]
+    else:
+        # New format - just rename to lowercase and select columns
+        df = df.rename(columns={
+            cols_lower['speaker']: 'speaker',
+            cols_lower['start']: 'start',
+            cols_lower['end']: 'end',
+            cols_lower['text']: 'text'
+        })
+        df = df[['speaker', 'start', 'end', 'text']]
     
-    # Remove rows with empty cells in required columns
-    df = df.dropna(subset=['timestamp', 'speaker', 'utterance'])
+    # Remove rows with empty cells
+    df = df.dropna(subset=['speaker', 'start', 'end', 'text'])
     
     if len(df) == 0:
         raise ValueError("No valid rows (all have empty cells in required columns)")
     
-    # Parse timestamps and add timestamp_seconds column
-    df['timestamp_seconds'] = df['timestamp'].apply(parse_timestamp)
+    # Ensure start and end are floats
+    df['start'] = df['start'].astype(float)
+    df['end'] = df['end'].astype(float)
     
     return df.reset_index(drop=True)
 
