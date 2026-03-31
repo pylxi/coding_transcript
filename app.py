@@ -100,16 +100,24 @@ class AnnotationSession:
             self.current_idx = 0
             self.annotations = []
             
+            # Check if file is empty
+            if len(self.df) == 0:
+                return "❌ Error: CSV file is empty after loading"
+            
             # Segment using discourse model (requires GPT-4)
             print(f"🔄 Segmenting {len(self.df)} utterances using discourse model...")
             self.episodes = segment_dialogue(self.df)
+            
+            if len(self.episodes) == 0:
+                return f"⚠️  Warning: Loaded {len(self.df)} utterances but no episodes were extracted. Check your data quality."
             
             return f"✅ Loaded {len(self.df)} utterances - {len(self.episodes)} episodes extracted using Grosz & Sidner discourse model"
         
         except ValueError as e:
             return f"❌ Validation Error: {str(e)}"
         except Exception as e:
-            return f"❌ Error: {str(e)}"
+            # Catch all other exceptions (API errors, parsing errors, etc.)
+            return f"❌ Unexpected Error: {str(e)}"
     
     def get_next_episode(self):
         """
@@ -163,9 +171,12 @@ def load_file_handler(file):
     Returns:
         Tuple of (status_msg, transcript, analysis, metadata)
     """
+    if file is None:
+        return "❌ Error: No file uploaded", "", "", ""
+    
     status = session.load_csv(file)
     
-    if "✅" in status:
+    if "✅" in status and len(session.episodes) > 0:
         # Load first episode
         episode = session.get_next_episode()
         if episode:
@@ -192,89 +203,92 @@ def display_episode(episode):
     Returns:
         Tuple of (transcript_text, analysis_text, metadata_text)
     """
-    if episode is None:
+    if episode is None or session.df is None:
         return "", "", ""
     
-    if session.df is None:
+    try:
+        # ─────────────────────────────────────────────────────────────────────────
+        # 1. BUILD TRANSCRIPT (dialogue turns with speaker changes)
+        # ─────────────────────────────────────────────────────────────────────────
+        
+        transcript = ""
+        last_speaker = None
+        
+        # Build dialogue text from episode turn range
+        start_turn = episode.get('start_turn', 0)
+        end_turn = episode.get('end_turn', 0)
+        
+        for i in range(start_turn, end_turn + 1):
+            if i < len(session.df):
+                row = session.df.iloc[i]
+                # Pandas Series uses bracket notation, not .get()
+                speaker = row['speaker'] if 'speaker' in row else 'Unknown'
+                text = row['text'] if 'text' in row else ''
+                start_time = row['start'] if 'start' in row else 0
+                end_time = row['end'] if 'end' in row else 0
+                
+                # Add speaker header when speaker changes
+                if speaker != last_speaker:
+                    transcript += f"\n[{speaker}]\n"
+                    last_speaker = speaker
+                
+                # Add turn with timestamp
+                duration = end_time - start_time
+                transcript += f"[{start_time:.1f}s-{end_time:.1f}s] {text}\n"
+        
+        # ─────────────────────────────────────────────────────────────────────────
+        # 2. BUILD ANALYSIS (discourse information)
+        # ─────────────────────────────────────────────────────────────────────────
+        
+        analysis = ""
+        
+        # Discourse Segment Purpose
+        dsp = episode.get('dsp', 'Unknown')
+        analysis += f"📍 **Discourse Segment Purpose (DSP)**: {dsp}\n\n"
+        
+        # Stack Operation
+        stack_op = episode.get('stack_operation', 'continue')
+        analysis += f"🔗 **Stack Operation**: {stack_op}\n\n"
+        
+        # Collaboration Dimensions
+        dimensions = episode.get('dimensions', [])
+        if dimensions:
+            analysis += f"🤝 **Collaboration Dimensions**:\n"
+            for dim in dimensions:
+                analysis += f"  • {dim}\n"
+        else:
+            analysis += f"🤝 **Collaboration Dimensions**: Not specified\n"
+        
+        # ─────────────────────────────────────────────────────────────────────────
+        # 3. BUILD METADATA (episode statistics)
+        # ─────────────────────────────────────────────────────────────────────────
+        
+        metadata = ""
+        
+        # Episode duration
+        duration_min = episode.get('duration_minutes', 0)
+        duration_sec = episode.get('duration_seconds', 0)
+        metadata += f"⏱️  **Duration**: {duration_min:.1f} min ({duration_sec:.0f}s)\n\n"
+        
+        # Utterance count
+        utt_count = episode.get('utterance_count', 0)
+        metadata += f"📢 **Utterances**: {utt_count}\n\n"
+        
+        # Speakers
+        speakers = episode.get('speakers', 'Unknown')
+        num_speakers = episode.get('num_speakers', 0)
+        metadata += f"👥 **Speakers** ({num_speakers}): {speakers}\n\n"
+        
+        # Episode ID
+        episode_id = episode.get('episode_id', 0)
+        metadata += f"🆔 **Episode ID**: {episode_id}\n"
+        metadata += f"📍 **Turn Range**: {start_turn} - {end_turn}\n"
+        
+        return transcript, analysis, metadata
+    
+    except Exception as e:
+        print(f"❌ Error displaying episode: {str(e)}")
         return "", "", ""
-    
-    # ─────────────────────────────────────────────────────────────────────────
-    # 1. BUILD TRANSCRIPT (dialogue turns with speaker changes)
-    # ─────────────────────────────────────────────────────────────────────────
-    
-    transcript = ""
-    last_speaker = None
-    
-    # Build dialogue text from episode turn range
-    start_turn = episode.get('start_turn', 0)
-    end_turn = episode.get('end_turn', 0)
-    
-    for i in range(start_turn, end_turn + 1):
-        if i < len(session.df):
-            row = session.df.iloc[i]
-            speaker = row.get('speaker', 'Unknown')
-            text = row.get('text', '')
-            start_time = row.get('start', 0)
-            end_time = row.get('end', 0)
-            
-            # Add speaker header when speaker changes
-            if speaker != last_speaker:
-                transcript += f"\n[{speaker}]\n"
-                last_speaker = speaker
-            
-            # Add turn with timestamp
-            duration = end_time - start_time
-            transcript += f"[{start_time:.1f}s-{end_time:.1f}s] {text}\n"
-    
-    # ─────────────────────────────────────────────────────────────────────────
-    # 2. BUILD ANALYSIS (discourse information)
-    # ─────────────────────────────────────────────────────────────────────────
-    
-    analysis = ""
-    
-    # Discourse Segment Purpose
-    dsp = episode.get('dsp', 'Unknown')
-    analysis += f"📍 **Discourse Segment Purpose (DSP)**: {dsp}\n\n"
-    
-    # Stack Operation
-    stack_op = episode.get('stack_operation', 'continue')
-    analysis += f"🔗 **Stack Operation**: {stack_op}\n\n"
-    
-    # Collaboration Dimensions
-    dimensions = episode.get('dimensions', [])
-    if dimensions:
-        analysis += f"🤝 **Collaboration Dimensions**:\n"
-        for dim in dimensions:
-            analysis += f"  • {dim}\n"
-    else:
-        analysis += f"🤝 **Collaboration Dimensions**: Not specified\n"
-    
-    # ─────────────────────────────────────────────────────────────────────────
-    # 3. BUILD METADATA (episode statistics)
-    # ─────────────────────────────────────────────────────────────────────────
-    
-    metadata = ""
-    
-    # Episode duration
-    duration_min = episode.get('duration_minutes', 0)
-    duration_sec = episode.get('duration_seconds', 0)
-    metadata += f"⏱️  **Duration**: {duration_min:.1f} min ({duration_sec:.0f}s)\n\n"
-    
-    # Utterance count
-    utt_count = episode.get('utterance_count', 0)
-    metadata += f"📢 **Utterances**: {utt_count}\n\n"
-    
-    # Speakers
-    speakers = episode.get('speakers', 'Unknown')
-    num_speakers = episode.get('num_speakers', 0)
-    metadata += f"👥 **Speakers** ({num_speakers}): {speakers}\n\n"
-    
-    # Episode ID
-    episode_id = episode.get('episode_id', 0)
-    metadata += f"🆔 **Episode ID**: {episode_id}\n"
-    metadata += f"📍 **Turn Range**: {start_turn} - {end_turn}\n"
-    
-    return transcript, analysis, metadata
 
 
 def next_episode_handler():
