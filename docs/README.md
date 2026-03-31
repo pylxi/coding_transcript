@@ -11,43 +11,83 @@ pinned: false
 
 # Dialogue Episode Annotator
 
-A Gradio web app for segmenting dialogue transcripts into episodes and annotating them with metacognitive categories.
+A Gradio web app for segmenting dialogue transcripts into episodes with two advanced methods:
+1. **Similarity-based** (fast, local, no API required)
+2. **Discourse stack analysis** (GPT-4 powered, detailed discourse structure)
 
 ## Features
 
-- 📁 Upload Excel files with dialogue data
-- 🔄 Automatic episode segmentation using similarity-based algorithms
-- ✍️ Annotate episodes with metacognitive types
-- 📊 Preview episode content before annotation
-- 📥 Export annotated data to Excel
+- 📁 Load CSV files with dialogue data (flexible column names)
+- 🔄 **Two segmentation methods**:
+  - Similarity-based: Fast topic shift detection with embeddings
+  - Discourse stack: LLM-based Grosz & Sidner analysis with 9 collaboration dimensions
+- 📊 Episode metadata: duration, participants, topics, DSP labels
+- 🎙️ Monologue detection and summarization
+- 📋 Collaboration dimension classification
+- 🔄 On-demand episode extraction (reads file progressively)
 
-## How to Use
+## Quick Start
 
-### Local Setup
+### Installation
 
-1. Clone the repository or copy the files
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```bash
+# Clone or setup workspace
+cd your-workspace
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-4. Run the app:
-   ```bash
-   python app.py
-   ```
+# For discourse stack method (optional):
+pip install openai>=1.0.0
+export OPENAI_API_KEY="your-key-here"
+```
 
-The app will open at `http://localhost:7860`
+### Run
 
-### Using the App
+```bash
+python app.py
+```
 
-1. **Upload File**: Select an Excel file with columns: `speaker`, `utterance`
-2. **Set Sensitivity**: Adjust the threshold slider (0.3-0.8)
+Open `http://localhost:7860` in your browser.
+
+### Input Format
+
+CSV file with columns:
+- `speaker`: Speaker name (required)
+- `start`: Start time in seconds or MM:SS (required for discourse method)
+- `end`: End time in seconds or MM:SS (required for discourse method)
+- `utterance` OR `text`: Dialogue text (required)
+
+Example:
+```csv
+speaker,start,end,utterance
+Alice,0.5,2.3,Hi Bob, how are you?
+Bob,2.5,4.1,I'm good! How about you?
+```
+
+## Methods Comparison
+
+| Feature | Similarity-Based | Discourse Stack |
+|---------|-----------------|-----------------|
+| Speed | ~1s for 100 utterances | ~5-10s (API dependent) |
+| API Required | No | Yes (GPT-4) |
+| Cost | Free | $0.01-0.05 per transcript |
+| Episode Detection | Embedding similarity + heuristics | Discourse structure analysis |
+| Output Detail | Duration, speakers, topics | DSP labels, stack operations, collaboration dimensions |
+
+## Configuration
+
+See [DISCOURSE_SEGMENTATION.md](DISCOURSE_SEGMENTATION.md) for detailed parameter documentation and advanced usage.
+
+### Similarity-Based Parameters
+- `similarity_threshold`: 0.5
+- `min_episode_utterances`: 5
+- `max_episode_utterances`: 30
+- Duration: 60-300 seconds
+
+### Discourse Stack Parameters
+- `chunk_duration_sec`: 600 (10 minutes)
+- Collaboration dimensions: 9 detailed categories
    - Lower = more episodes
    - Higher = fewer episodes
 3. **Segment**: Click "Segment" to split dialogue into episodes
