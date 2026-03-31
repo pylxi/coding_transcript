@@ -302,6 +302,33 @@ def next_episode_handler():
     return transcript, analysis, metadata, current_info
 
 
+def prev_episode_handler():
+    """
+    Handle "Previous Episode" button click.
+    
+    STEPS:
+    1. Decrement session index (if not at first)
+    2. Get the previous episode
+    3. Call display_episode() to format it
+    4. Return outputs to UI
+    
+    Returns:
+        Tuple of (transcript, analysis, metadata, current_info)
+    """
+    if session.current_idx > 0:
+        session.current_idx -= 1
+    
+    episode = session.get_next_episode()
+    
+    if episode is None:
+        return "", "", "", "Already at first episode"
+    
+    transcript, analysis, metadata = display_episode(episode)
+    current_info = f"Episode {session.current_idx + 1} of {len(session.episodes)}"
+    
+    return transcript, analysis, metadata, current_info
+
+
 # ════════════════════════════════════════════════════════════════════════════
 # GRADIO UI - LAYOUT & INTERACTION
 # ════════════════════════════════════════════════════════════════════════════
@@ -448,7 +475,7 @@ def create_ui():
         )
         
         prev_btn.click(
-            fn=lambda: ("Not yet implemented", "", "", ""),
+            fn=prev_episode_handler,
             outputs=[transcript_output, analysis_output, metadata_output, current_info]
         )
     

@@ -356,19 +356,36 @@ def segment_dialogue(df: pd.DataFrame, chunk_duration_sec: float = 600.0, api_ke
         monologue_summaries = summarize_monologues(chunk_df, monologues, api_key) if monologues else []
         
         # Call LLM for this chunk
-        result = call_llm_for_chunk(
-            chunk_df,
-            monologue_summaries,
-            overlaps,
-            stack,
-            bookmark,
-            api_key
-        )
+        try:
+            result = call_llm_for_chunk(
+                chunk_df,
+                monologue_summaries,
+                overlaps,
+                stack,
+                bookmark,
+                api_key
+            )
+        except json.JSONDecodeError as e:
+            print(f"⚠️  Warning: LLM returned invalid JSON for chunk {chunk_start}-{chunk_end}: {e}")
+            print(f"   Skipping this chunk and continuing...")
+            current_turn = chunk_end + 1
+            continue
+        except Exception as e:
+            print(f"❌ Error processing chunk {chunk_start}-{chunk_end}: {type(e).__name__}: {e}")
+            raise ValueError(f"Failed to segment dialogue: {str(e)}") from e
         
         # Convert local turn indices to global and format for UI
         for ep in result.get("episodes", []):
             global_start = chunk_start + ep["local_start"] - 1
             global_end = chunk_start + ep["local_end"] - 1
+            
+            # VALIDATE turn indices to prevent IndexError
+            if global_start < 0 or global_end >= len(df):
+                print(f"⚠️  Warning: Invalid turn range {global_start}-{global_end} (valid: 0-{len(df)-1}), skipping episode")
+                continue
+            if global_start > global_end:
+                print(f"⚠️  Warning: Invalid range (start > end): {global_start}-{global_end}, skipping episode")
+                continue
             
             # Get episode metadata
             episode_utterances = df.iloc[global_start:global_end+1]

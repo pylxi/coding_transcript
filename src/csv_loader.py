@@ -100,6 +100,20 @@ def load_csv_file(file_path):
     df['start'] = df['start'].astype(float)
     df['end'] = df['end'].astype(float)
     
+    # VALIDATE data quality
+    if (df['start'] >= df['end']).any():
+        invalid_count = (df['start'] >= df['end']).sum()
+        raise ValueError(
+            f"Invalid data: {invalid_count} rows have start >= end. "
+            f"Start time must be less than end time for each row."
+        )
+    
+    if (df['start'] < 0).any() or (df['end'] < 0).any():
+        raise ValueError("Invalid data: Timestamps cannot be negative")
+    
+    if df['speaker'].isnull().any() or df['text'].isnull().any():
+        raise ValueError("Invalid data: Speaker and text columns cannot contain null values after loading")
+    
     return df.reset_index(drop=True)
 
 
