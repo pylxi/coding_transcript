@@ -29,8 +29,7 @@ html {
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-                 Ubuntu, Cantarell, sans-serif;
+    font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
     line-height: 1.6;
@@ -210,6 +209,7 @@ input[type="range"] {
                   var(--primary-color) 100%);
     outline: none;
     -webkit-appearance: none;
+    appearance: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
