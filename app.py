@@ -1,53 +1,10 @@
-"""
-╔══════════════════════════════════════════════════════════════════════════════╗
-║         🎙️  DIALOGUE EPISODE ANNOTATOR - MAIN APPLICATION                   ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+"""HF Spaces entry point for Gradio interface."""
 
-ARCHITECTURE OVERVIEW:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+from app_gradio import create_interface
 
-This application has three main layers:
-
-1. DATA LAYER (src/csv_loader.py)
-   └─ Handles CSV file loading with encoding fallbacks
-   └─ Parses timestamps (MM:SS or HH:MM:SS format)
-   └─ Validates required columns: speaker, start, end, text
-   └─ Output: Normalized DataFrame with time columns in seconds
-
-2. EXTRACTION LAYER (src/discourse_segmenter.py)
-   └─ LLM-powered discourse analysis using Grosz & Sidner stack model
-   └─ Uses GPT-4 for semantic analysis
-   └─ Classifies 9 collaboration dimensions
-   └─ Detects monologues and speaker overlaps
-   └─ Returns: episodes with DSP labels, stack operations, dimensions
-   └─ Handles large transcripts with bookmarking system
-
-3. PRESENTATION LAYER (this file: app.py)
-   └─ Gradio web interface
-   └─ Episode display with analysis tabs
-   └─ Monologue summaries
-   └─ Collaboration dimension analysis
-   └─ Status messages and error handling
-   └─ Session state management
-
-FILE DEPENDENCY FLOW:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    User CSV File
-         ↓
-    src/csv_loader.load_csv_file()  ← Validates & parses timestamps
-         ↓
-    DataFrame (normalized: speaker, start, end, text)
-         ↓
-    src/discourse_segmenter.segment_dialogue()
-         ↓
-         ├─ detect_monologues_without_content()
-         ├─ detect_overlaps_without_content()
-         ├─ summarize_monologues() [GPT-4 calls]
-         ├─ call_llm_for_chunk() [GPT-4 calls]
-         └─ Format episodes with DSP, dimensions, stack ops
-         ↓
-    List of Episode objects
+if __name__ == "__main__":
+    interface = create_interface()
+    interface.launch()
          ↓
     app.py (display_episode)  ← Formats for UI display
          ↓
