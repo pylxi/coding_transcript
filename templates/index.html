@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Home - CSV Analyzer{% endblock %}
+
+{% block content %}
+<div class="home-page">
+    <section class="upload-section">
+        <h2>Upload CSV File</h2>
+        
+        <div class="upload-area" id="uploadArea">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <p class="upload-text">Drag and drop your CSV file here</p>
+            <p class="upload-subtext">or</p>
+            <input type="file" id="csvFile" accept=".csv" style="display: none;">
+            <button class="btn btn-primary" onclick="document.getElementById('csvFile').click()">
+                Choose File
+            </button>
+        </div>
+
+        <div id="errorMessage" class="alert alert-error" style="display: none;"></div>
+        <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+    </section>
+
+    <section class="file-info-section" id="fileInfoSection" style="display: none;">
+        <h2>File Information</h2>
+        <div class="info-card">
+            <div class="info-item">
+                <span class="info-label">File Name:</span>
+                <span class="info-value" id="fileName"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Rows:</span>
+                <span class="info-value" id="rowCount"></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Columns:</span>
+                <span class="info-value" id="columnCount"></span>
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const csvFile = document.getElementById('csvFile');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    const fileInfoSection = document.getElementById('fileInfoSection');
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFileSelection(files[0]);
+        }
+    });
+
+    csvFile.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileSelection(e.target.files[0]);
+        }
+    });
+
+    function handleFileSelection(file) {
+        errorMessage.style.display = 'none';
+        successMessage.style.display = 'none';
+        fileInfoSection.style.display = 'none';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                successMessage.textContent = data.message;
+                successMessage.style.display = 'block';
+                
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('rowCount').textContent = data.rows;
+                document.getElementById('columnCount').textContent = data.columns;
+                fileInfoSection.style.display = 'block';
+            } else {
+                errorMessage.textContent = 'Error: ' + data.error;
+                errorMessage.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            errorMessage.textContent = 'Error uploading file: ' + error.message;
+            errorMessage.style.display = 'block';
+        });
+    }
+</script>
+{% endblock %}
